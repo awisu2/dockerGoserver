@@ -1,0 +1,45 @@
+version: '2'
+services:
+  nginx:
+    image: nginx
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    restart: always
+    volumes:
+      - $PWD/nginx/conf.d:/etc/nginx/conf.d:ro
+    links:
+      - app
+  app:
+    build:
+      context: ./go
+    image: golang:myapp
+    depends_on:
+      - db
+    volumes:
+      - $PWD/go:/go/src/app
+    working_dir: /go/src/app
+    # godoで更新を監視、本番環境では別コマンドを
+    command: go run main.go
+    restart: always
+    links:
+      - db
+  db:
+    build:
+      context: ./mysql
+    image: mysql/custom:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    restart: always
+    volumes:
+      # 初回時に起動するsql用ディレクトリ
+      - $PWD/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      # データをホストと連携(開発時用の可視化のため本番では、volumes_fromを利用)
+      - $PWD/mysql/data:/var/lib/mysql
+#    volumes_from:
+#      - busybox_db
+#  busybox_db:
+#    image: busybox
+#    volumes:
+#      - /var/lib/mysql
